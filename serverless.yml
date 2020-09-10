@@ -12,6 +12,17 @@ provider:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
 
 custom:
+  stages:
+    dev:
+      userPoolId: ap-northeast-1_A4HgKRlsc
+    stg:
+      userPoolId: ap-northeast-1_A4HgKRlsc
+    prod:
+      userPoolId: ap-northeast-1_XXXXXXXXX
+
+  appsync-simulator:
+    location: ".webpack/service"
+
   dynamodb:
     stages:
       - dev
@@ -20,13 +31,20 @@ custom:
     start:
       port: 8000
       inMemory: true
+      migrate: true # DynamoDB Local 起動時にテーブルを作成する
+      seed: true # DynamoDB Local 起動時にシードデータを挿入する
+    seed:
+      dev:
+        sources:
+          - table: ${self:service.name}_task # dev_task というテーブル名を想定している
+            sources: [./migrations/tasks.json]
 
   appSync:
     name: ${self:service.name}_test
     authenticationType: AMAZON_COGNITO_USER_POOLS
     userPoolConfig:
       awsRegion: ap-northeast-1
-      userPoolId: ap-northeast-1_A4HgKRlsc
+      userPoolId: ${self:custom.stages.${opt:stage}.userPoolId}
       defaultAction: ALLOW
     schema: schema.graphql
     dataSources:
@@ -99,6 +117,9 @@ custom:
 plugins:
   - serverless-webpack
   - serverless-appsync-plugin
+  - serverless-dynamodb-local
+  - serverless-appsync-simulator
+  - serverless-offline
 
 # Lambda Function は通常の Serverless Framework の使い方と一緒
 functions:
